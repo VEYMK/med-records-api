@@ -1,0 +1,74 @@
+### Register a doctor
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "doctor@example.com",
+  "password": "password123",
+  "fullName": "Dr. Gregory House",
+  "role": "DOCTOR"
+}
+
+### Register a patient
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "patient@example.com",
+  "password": "password123",
+  "fullName": "John Doe",
+  "role": "PATIENT"
+}
+
+### Login (copy accessToken into the @token variable below)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "doctor@example.com",
+  "password": "password123"
+}
+
+### Current user
+GET http://localhost:8080/api/auth/me
+Authorization: Bearer {{token}}
+
+### List doctors
+GET http://localhost:8080/api/users/doctors
+Authorization: Bearer {{token}}
+
+### Create an appointment (doctor only; replace patientId)
+POST http://localhost:8080/api/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "00000000-0000-0000-0000-000000000000",
+  "appointmentDate": "2030-01-15T10:00:00Z",
+  "reason": "Annual checkup",
+  "notes": "Fasting before the visit"
+}
+
+### My appointments
+GET http://localhost:8080/api/appointments
+Authorization: Bearer {{token}}
+
+### Get one appointment
+GET http://localhost:8080/api/appointments/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+### Change status (doctor only)
+PATCH http://localhost:8080/api/appointments/00000000-0000-0000-0000-000000000000/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "COMPLETED"
+}
+
+### Cancel appointment (patient only)
+DELETE http://localhost:8080/api/appointments/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+### Health check
+GET http://localhost:8080/actuator/health

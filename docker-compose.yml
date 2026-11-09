@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medrecords-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-medrecords}
+      POSTGRES_USER: ${POSTGRES_USER:-medrecords}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-medrecords}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medrecords} -d ${POSTGRES_DB:-medrecords}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medrecords-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-medrecords}
+      DB_USERNAME: ${POSTGRES_USER:-medrecords}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-medrecords}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef0123456789abcdef}
+      JPA_DDL_AUTO: update
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+volumes:
+  pgdata:
