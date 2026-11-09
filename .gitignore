@@ -24,3 +24,6 @@ Thumbs.db
 
 ### Logs ###
 *.log
+
+### Local PostgreSQL instance used for manual runs ###
+.pgdata/
