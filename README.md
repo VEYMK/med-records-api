@@ -1,10 +1,28 @@
 # med-records-api
 
+[![CI](https://github.com/VEYMK/med-records-api/actions/workflows/ci.yml/badge.svg)](https://github.com/VEYMK/med-records-api/actions/workflows/ci.yml)
+
 REST API для медицинского центра: врачи и пациенты, запись на приём, роли и JWT-аутентификация.
 
 Проект специально сделан как «портфолио-проект под Java-разработчика»: здесь есть Spring Web,
 Spring Security + OAuth2 Resource Server, Spring Data JPA, PostgreSQL с осознанными индексами,
 JUnit 5 + Mockito, интеграционные тесты на `@SpringBootTest`, многоэтапный Dockerfile и CI.
+
+---
+
+## Ключевые технические решения
+
+| Решение | Почему так, а не иначе |
+|---|---|
+| **Spring Security + OAuth2 Resource Server, JWT (HS256)** | Стандартный способ аутентификации вместо самописных фильтров и сессий. Формат токена и проверка подписи совместимы с Keycloak/OIDC: переход на внешний провайдер — замена источника токенов, а не переписывание security-слоя. |
+| **PostgreSQL, а не H2 в продакшене** | Нужны честные транзакции, `FOREIGN KEY`, `UNIQUE` и составные индексы. H2 используется только в тестах в режиме `MODE=PostgreSQL`, чтобы `mvn test` работал без Docker. |
+| **`UNIQUE (doctor_id, appointment_date)`** | Защита от двойного бронирования на уровне БД. Даже при гонке двух запросов второй `INSERT` упадёт с `409`, а не создаст две записи. |
+| **Optimistic locking (`@Version`)** | Защита от потерянного обновления при одновременной смене статуса приёма двумя врачами. |
+| **Составные индексы `(doctor_id, appointment_date)` и `(patient_id, appointment_date)`** | Самые частые запросы — расписание врача и история пациента. Правило левого префикса даёт фильтрацию и сортировку одним индексом. |
+| **RFC 7807 `ProblemDetail`** | Единый машиночитаемый формат ошибок вместо самодельных JSON-структур. |
+| **Multi-stage Docker** | В финальный образ попадает только JRE и jar: меньше размер, меньше уязвимостей, нет Maven и исходников. |
+| **GitHub Actions + GitLab CI** | Пайплайны запускают тесты до сборки образа: красные тесты не пропускают образ в registry. |
+| **H2 вместо Testcontainers в тестах** | Компромисс ради скорости и запуска без Docker. Ограничение осознано; Testcontainers — первый пункт в списке улучшений. |
 
 ---
 
@@ -29,13 +47,22 @@ JUnit 5 + Mockito, интеграционные тесты на `@SpringBootTest
 
 ### Вариант A — Docker Compose (рекомендуется)
 
-Нужен установленный Docker Desktop / Docker Engine.
+Нужен установленный Docker Desktop / Docker Engine. Запуск — одной командой:
 
 ```bash
-cp .env.example .env
-# отредактируйте .env: пароль PostgreSQL и APP_JWT_SECRET (>= 32 байт)
 docker compose up --build
 ```
+
+`docker-compose.yml` содержит dev-значения по умолчанию для БД и JWT, поэтому `.env`
+не обязателен. Для переопределения секретов скопируйте `.env.example` в `.env`:
+
+```bash
+cp .env.example .env   # опционально; в продакшене пароль и APP_JWT_SECRET нужно заменить
+```
+
+> Значения по умолчанию предназначены только для локального запуска. В продакшене
+> задайте сильный `POSTGRES_PASSWORD` и `APP_JWT_SECRET` (минимум 32 байта) через
+> переменные окружения или секреты CI/CD.
 
 Поднимется два контейнера:
 
